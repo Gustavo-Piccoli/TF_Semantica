@@ -3,7 +3,7 @@ type tipo =
   | TyInt                   (* int *)      (* Tipo numero inteiro *)
   | TyBool                  (* bool *)     (* Tipo booleano *)
   | TyFn    of tipo * tipo  (* T1-->T2 *)  (* Tipo funcao *)
-  | TyPair  of tipo * tipo  (* T1*T2 *)    (* Tipo par *)
+  | TyPar  of tipo * tipo   (* T1*T2 *)    (* Tipo par *)
   | TyList  of tipo         (* T list *)   (* Tipo Lista *)
   | TyMaybe of tipo         (* maybe T*)   (* Tipo maybe*)  (* POSSIVELMENTE ERRADO*)
 
@@ -36,7 +36,7 @@ type expr =
   | ExLet           of ident * tipo * expr * expr    (* Funcao declarada *)
   | ExLetRec        of ident * tipo * expr * expr    (* Funcao declarada recursiva *)
   | ExBinop         of bop * expr * expr             (* Operacao binaria *)
-  | ExPair          of expr * expr                   (* Par *)
+  | ExPar          of expr * expr                   (* Par *)
   | ExFst           of expr                          (* Primeiro elemento de um par *)
   | ExSnd           of expr                          (* Segundo elemento de um par *)
   | ExNil           of tipo                          (* Lista vazia *)
@@ -53,13 +53,15 @@ type tenv = (ident * tipo) list
 
 (* Valores *) (* ADICIONAR O QUE ESTIVER FALTANDO*)
 type valor =
-    VNum of int
+    VNum   of int
   | VTrue
   | VFalse
-  | VPair of valor * valor
-  | VNil
-  | VList of valor * valor
-  | VMaybe of valor
+  | VPar  of valor * valor
+  | VNil                                    (* POSSIVELMENTE ERRADO*)
+  | VList  of valor * valor                 (* POSSIVELMENTE ERRADO*)
+  | VJust of valor                          (* POSSIVELMENTE ERRADO*)
+  | VNothing                                (* POSSIVELMENTE ERRADO*)
+  | VMaybe of valor                         (* POSSIVELMENTE ERRADO*)
   | VClos  of ident * expr * renv
   | VRclos of ident * ident * expr * renv
 and 
@@ -155,16 +157,16 @@ let rec typeinfer (gamma: tenv) (e:expr) : tipo  = match e with
       else raise TypeError)
 
   (* Par *)
-  | ExPair(e1,e2) -> TyPair(typeinfer gamma e1, typeinfer gamma e2) 
+  | ExPar(e1,e2) -> TyPar(typeinfer gamma e1, typeinfer gamma e2) 
 
   (* Primeiro Elemento de um Par *)
   | ExFst e1 -> (match typeinfer gamma e1 with
-      | TyPair(t1,_) -> t1
+      | TyPar(t1,_) -> t1
       | _ -> raise TypeError)
 
   (* Segundo Elemento de um Par *)
   | ExSnd e1 -> (match typeinfer gamma e1 with
-      | TyPair(_,t2) -> t2
+      | TyPar(_,t2) -> t2
       | _ -> raise TypeError)
 
   (* Lista Vazia *)
@@ -286,25 +288,25 @@ let rec eval (gamma:renv) (e:expr) : valor = match e with
   | ExLetRec _ -> raise BugParser
 
   (* Operacao Binaria *)
-  | ExBinop(oper,e1,e2) ->
+  | ExBinop(operador,e1,e2) ->
       let v1 = eval gamma e1 in
       let v2 = eval gamma e2 in
-      faz_operacao oper v1 v2
+      faz_operacao operador v1 v2
 
   (* Par *)
-  | ExPair(e1,e2) ->
+  | ExPar(e1,e2) ->
       let v1 = eval gamma e1 in
       let v2 = eval gamma e2 in
-      VPair(v1,v2)
+      VPar(v1,v2)
 
   (* Primeiro Elemento de um Par *)
-  | ExFst e -> (match eval gamma e with
-      | VPair(v1,_) -> v1
+  | ExFst e0 -> (match e0 with
+      | ExPar(e1,_) -> eval gamma e1
       | _ -> raise BugTypeInfer)
 
   (* Segundo Elemento de um Par *)
-  | ExSnd e -> (match eval gamma e with
-      | VPair(_,v2) -> v2
+  | ExSnd e0 -> (match e0 with
+      | ExPar(_,e2) -> eval gamma e2
       | _ -> raise BugTypeInfer)
 
   (* Lista Vazia *)
@@ -317,24 +319,60 @@ let rec eval (gamma:renv) (e:expr) : valor = match e with
       VList(v1,v2)
 
   (* Primeiro Elemento de uma Lista*)
-  | ExHead _ -> raise NotImplemented
+  | ExHead e0 -> (match e0 with
+      | ExList(e1,_) -> eval gamma e1
+      | _ -> raise BugTypeInfer)
 
   (* Segundo Elemento de uma Lista*)
-  | ExTail _ -> raise NotImplemented
+  | ExTail e0 -> (match e0 with
+      | ExList(_,e2) -> eval gamma e2
+      | _ -> raise BugTypeInfer)
 
   (* Verifica se a Lista e Vazia ou Nao*)
-  | ExMatchList _ -> raise NotImplemented
+  | ExMatchList(e0, e1, e2) ->
+      let v0 = eval gamma e0 in (match v0 with
+        | VNil -> eval gamma e1
+        | VList(_,_) -> eval gamma e2
+        | _ -> raise BugTypeInfer)
 
   (* POSSIVELMENTE ERRADO*)
-  | ExJust _ -> raise NotImplemented
+  | ExJust e0 -> VJust(eval gamma e0)
 
   (* POSSIVELMENTE ERRADO*)
-  | ExNothing _ -> raise NotImplemented
+  | ExNothing _ -> VNothing
 
   (* POSSIVELMENTE ERRADO*)
-  | ExMatchNothing _ -> raise NotImplemented
+  | ExMatchNothing(e1, e2, e3) -> (match e1 with
+      | ExJust e0 -> eval gamma e2
+      | ExNothing _ -> eval gamma e3
+      | _ -> raise BugTypeInfer)
 
 
-(*
-let interpretador (e:expr) : unit = 
-*)
+
+(**************************************************************************************************************)
+(************************************************ INTERPRETADOR ***********************************************)
+(**************************************************************************************************************)
+
+(* Função Auxiliar que Converte Tipo para String *)
+let rec ttos (t:tipo) : string = match t with
+    | TyInt  -> "int"
+    | TyBool -> "bool"
+    | TyFn(t1,t2)   ->  "("  ^ (ttos t1) ^ " --> " ^ (ttos t2) ^ ")"
+    | TyPar(t1,t2) ->  "("  ^ (ttos t1) ^ " * "   ^ (ttos t2) ^ ")"
+    | _ -> raise NotImplemented
+  
+(* Função Auxiliar que Converte Valor para String *)
+let rec vtos (v: valor) : string = match v with
+    | VNum n -> string_of_int n
+    | VTrue -> "true"
+    | VFalse -> "false"
+    | VPar(v1, v2) -> "(" ^ vtos v1 ^ "," ^ vtos v1 ^ ")"
+    | VClos _ ->  "fn"
+    | VRclos _ -> "fn"
+    | _ -> raise NotImplemented
+  
+(* Função Principal do Interpretador *)
+let interpretador (e:expr) : unit =
+    let t = typeinfer [] e in
+    let v = eval [] e in
+    print_string ((vtos v) ^ " : " ^ (ttos t))
