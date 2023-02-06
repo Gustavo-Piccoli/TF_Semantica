@@ -5,10 +5,7 @@ type tipo =
   | TyFn    of tipo * tipo  (* T1-->T2 *)  (* Tipo funcao *)
   | TyPar   of tipo * tipo  (* T1*T2 *)    (* Tipo par *)
   | TyList  of tipo         (* T list *)   (* Tipo Lista *)
-  | TyMaybe of tipo         (* maybe T*)   (* Tipo maybe*)  (* POSSIVELMENTE ERRADO*)
-
-(*Tipo ident utilizado por variaveis declaradas*)
-type ident = string
+  | TyMaybe of tipo         (* maybe T*)   (* Tipo maybe*)
 
 (*Tipos de operacoes binarias*)
 type bop = 
@@ -27,16 +24,16 @@ type bop =
 (*Gramatica de L1*)
 type expr =
   | ExNum           of int                           (* Numero inteiro *)
-  | ExVar           of ident                         (* Variavel *)
+  | ExVar           of string                        (* Variavel *)
   | ExTrue                                           (* Booleano true *)
   | ExFalse                                          (* Booleano false *)
   | ExIf            of expr * expr * expr            (* If then else *)
-  | ExFn            of ident * tipo * expr           (* Funcao anonima *)
+  | ExFn            of string * tipo * expr          (* Funcao anonima *)
   | ExApp           of expr * expr                   (* Aplicacao *)
-  | ExLet           of ident * tipo * expr * expr    (* Funcao declarada *)
-  | ExLetRec        of ident * tipo * expr * expr    (* Funcao declarada recursiva *)
+  | ExLet           of string * tipo * expr * expr   (* Funcao declarada *)
+  | ExLetRec        of string * tipo * expr * expr   (* Funcao declarada recursiva *)
   | ExBinop         of bop * expr * expr             (* Operacao binaria *)
-  | ExPar          of expr * expr                   (* Par *)
+  | ExPar           of expr * expr                   (* Par *)
   | ExFst           of expr                          (* Primeiro elemento de um par *)
   | ExSnd           of expr                          (* Segundo elemento de um par *)
   | ExNil           of tipo                          (* Lista vazia *)
@@ -44,28 +41,29 @@ type expr =
   | ExHead          of expr                          (* Retorna o primeiro elemento de uma lista *)
   | ExTail          of expr                          (* Retorna uma lista sem o primeiro elemento dela *)
   | ExMatchList     of expr * expr * expr            (* Retorna expressoes diferentes dependendo se a lista for vazia ou nao*)
-  | ExJust          of expr                          (* *) (* POSSIVELMENTE ERRADO*)
-  | ExNothing       of tipo                          (* *) (* POSSIVELMENTE ERRADO*)
-  | ExMatchNothing  of expr * expr * expr            (* *) (* POSSIVELMENTE ERRADO*)
+  | ExJust          of expr                          (* *)
+  | ExNothing       of tipo                          (* *)
+  | ExMatchMaybe    of expr * expr * expr            (* *)
 
 (*Declaracao dos ambiente das expressoes*)
-type tenv = (ident * tipo) list
+type ambiente_tipo = (string * tipo) list
 
 (* Valores *) (* ADICIONAR O QUE ESTIVER FALTANDO*)
 type valor =
-    VNum   of int
+    VNum      of int
   | VTrue
   | VFalse
-  | VPar  of valor * valor
-  | VNil                                    (* POSSIVELMENTE ERRADO*)
-  | VList  of valor * valor                 (* POSSIVELMENTE ERRADO*)
-  | VJust of valor                          (* POSSIVELMENTE ERRADO*)
-  | VNothing                                (* POSSIVELMENTE ERRADO*)
-  | VMaybe of valor                         (* POSSIVELMENTE ERRADO*)
-  | VClos  of ident * expr * renv
-  | VRclos of ident * ident * expr * renv
+  | VPar      of valor * valor
+  | VClos     of string * expr * ambiente_valor
+  | VRclos    of string * string * expr * ambiente_valor
+  | VNil                          (* POSSIVELMENTE ERRADO*)
+  | VList     of valor * valor    (* POSSIVELMENTE ERRADO*)
+  | VJust     of valor            (* POSSIVELMENTE ERRADO*)
+  | VNothing                      (* POSSIVELMENTE ERRADO*)
+  | VMaybe    of valor            (* POSSIVELMENTE ERRADO*)
+  
 and 
-  renv = (ident * valor) list
+  ambiente_valor = (string * valor) list
 
 (*Funcao polimorfica que ajuda a verificar todo o ambiente de uma expressao*)
 let rec lookup a k = match a with
@@ -96,7 +94,7 @@ exception NotImplemented
 (**************************************************************************************************************)
 
 (*Funcao que faz a inferencia de tipo de uma expressao da linguagem L1*)
-let rec typeinfer (gamma: tenv) (e:expr) : tipo  = match e with
+let rec typeinfer (gamma: ambiente_tipo) (e:expr) : tipo  = match e with
 
   (* Numero Inteiro *)
   | ExNum _ -> TyInt
@@ -202,7 +200,7 @@ let rec typeinfer (gamma: tenv) (e:expr) : tipo  = match e with
   | ExNothing(t) -> t
 
   (* POSSIVELMENTE ERRADO*)
-  | ExMatchNothing(e1,e2,e3) ->
+  | ExMatchMaybe(e1,e2,e3) ->
       let t2 = typeinfer gamma e2 in
       let t3 = typeinfer gamma e3 in
       (if t2 = t3 then t2 else raise TypeError)
@@ -235,7 +233,7 @@ let faz_operacao (oper: bop) (v1: valor) (v2: valor) = match (oper, v1, v2) with
 
 
 (* Funcao que faz apenas o passo big step*)
-let rec eval (gamma:renv) (e:expr) : valor = match e with
+let rec eval (gamma:ambiente_valor) (e:expr) : valor = match e with
 
   (* Numero Inteiro *)
   | ExNum n -> VNum n
@@ -342,7 +340,7 @@ let rec eval (gamma:renv) (e:expr) : valor = match e with
   | ExNothing _ -> VNothing
 
   (* POSSIVELMENTE ERRADO*)
-  | ExMatchNothing(e1, e2, e3) -> (match e1 with
+  | ExMatchMaybe(e1, e2, e3) -> (match e1 with
       | ExJust e0 -> eval gamma e2
       | ExNothing _ -> eval gamma e3
       | _ -> raise BugTypeInfer)
@@ -354,25 +352,33 @@ let rec eval (gamma:renv) (e:expr) : valor = match e with
 (**************************************************************************************************************)
 
 (* Função Auxiliar que Converte Tipo para String *)
-let rec ttos (t:tipo) : string = match t with
+let rec tipo_para_string (t:tipo) : string = match t with
     | TyInt  -> "int"
     | TyBool -> "bool"
-    | TyFn(t1,t2)   ->  "("  ^ (ttos t1) ^ " --> " ^ (ttos t2) ^ ")"
-    | TyPar(t1,t2) ->  "("  ^ (ttos t1) ^ " * "   ^ (ttos t2) ^ ")"
+    | TyFn(t1,t2)   ->  "("  ^ (tipo_para_string t1) ^ " --> " ^ (tipo_para_string t2) ^ ")"
+    | TyPar(t1,t2) ->  "("  ^ (tipo_para_string t1) ^ " * "   ^ (tipo_para_string t2) ^ ")"
     | _ -> raise NotImplemented
   
 (* Função Auxiliar que Converte Valor para String *)
-let rec vtos (v: valor) : string = match v with
+let rec valor_para_string (v: valor) : string = match v with
     | VNum n -> string_of_int n
     | VTrue -> "true"
     | VFalse -> "false"
-    | VPar(v1, v2) -> "(" ^ vtos v1 ^ "," ^ vtos v1 ^ ")"
+    | VPar(v1, v2) -> "(" ^ valor_para_string v1 ^ "," ^ valor_para_string v1 ^ ")"
     | VClos _ ->  "fn"
     | VRclos _ -> "fn"
     | _ -> raise NotImplemented
   
-(* Função Principal do Interpretador *)
+(* Função Principal do Interpretador 
 let interpretador (e:expr) : unit =
     let t = typeinfer [] e in
     let v = eval [] e in
-    print_string ((vtos v) ^ " : " ^ (ttos t))
+    print_string ((valor_para_string v) ^ " : " ^ (tipo_para_string t))*)
+
+(* Função Principal do Interpretador *)
+let interpretador (e:expr) : unit =
+    try 
+        let t = typeinfer [] e in
+        let v = eval [] e in
+        print_string ((valor_para_string v) ^ " : " ^ (tipo_para_string t))
+    with _ ->  print_string ("erro ")
