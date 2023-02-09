@@ -48,22 +48,31 @@ type expr =
 (*Declaracao dos ambiente das expressoes*)
 type ambiente_tipo = (string * tipo) list
 
-(* Valores *) (* ADICIONAR O QUE ESTIVER FALTANDO*)
+(* Valores *)
 type valor =
-    VNum      of int
-  | VTrue
-  | VFalse
-  | VPar      of valor * valor
-  | VClos     of string * expr * ambiente_valor
-  | VRclos    of string * string * expr * ambiente_valor
-  | VNil                          (* POSSIVELMENTE ERRADO*)
-  | VList     of valor * valor    (* POSSIVELMENTE ERRADO*)
-  | VJust     of valor            (* POSSIVELMENTE ERRADO*)
-  | VNothing                      (* POSSIVELMENTE ERRADO*)
-  | VMaybe    of valor            (* POSSIVELMENTE ERRADO*)
-  
+    VNum      of int                                        (* Numero inteiro *)
+  | VTrue                                                   (* Booleano true *)
+  | VFalse                                                  (* Booleano false *)
+  | VPar      of valor * valor                              (* Par *)
+  | VClos     of string * expr * ambiente_valor             (* Funcao anonima *)
+  | VRclos    of string * string * expr * ambiente_valor    (* Funcao declarada recursiva *)
+  | VNil      of tipo                                       (* Lista vazia *)
+  | VList     of valor * valor                              (* Lista nao vazia *)
+  | VJust     of valor                                      (* Maybe com valor *)
+  | VNothing  of tipo                                       (* Maybe vazio *)
 and 
   ambiente_valor = (string * valor) list
+
+(*VALORES:
+| n (inteiros)
+| b (booleanos)
+| fn*t->e (funcoes)
+| (v1,v2) (pares)
+| nil:T (listas vazias)
+| nothing: T (maybe vazio)
+| just v (maybe com valor)
+| v1::v2 (listas nao vazias)
+*)
 
 (*Funcao polimorfica que ajuda a verificar todo o ambiente de uma expressao*)
 let rec lookup a k = match a with
@@ -168,23 +177,29 @@ let rec typeinfer (gamma: ambiente_tipo) (e:expr) : tipo  = match e with
       | _ -> raise TypeError)
 
   (* Lista Vazia *)
-  | ExNil(t) -> t
+  | ExNil(e0) -> (match e0 with
+      | TyList(t0) -> TyList(t0)
+      | _ -> raise TypeError)
 
   (* Lista com Elementos *)
   | ExList(e1, e2) ->
       let t1 = typeinfer gamma e1 in 
-      let t2 = typeinfer gamma e2 in (match e2 with
-          | ExNil(_) | ExList(_) -> if t1 = t2 then t2 else raise TypeError 
+      let t2 = typeinfer gamma e2 in (match t2 with
+          | TyList(t3) -> if t1 = t3 then TyList(t1) else raise TypeError 
           | _ -> raise TypeError)
 
   (* Primeiro Elemento de uma Lista*)
   | ExHead(e0) -> (match e0 with
-      | ExList(e1, e2) -> typeinfer gamma e0
+      | ExList(e1, e2) -> let t0 = typeinfer gamma e0 in (match t0 with
+          | TyList(t1) -> t1
+          | _ -> raise TypeError)
       | _ -> raise TypeError)
 
   (* Segundo Elemento de uma Lista*)
-  | ExTail(e0) -> (match e with
-      | ExList(e1, e2) -> typeinfer gamma e0
+  | ExTail(e0) -> (match e0 with
+      | ExList(e1, e2) -> let t0 = typeinfer gamma e0 in (match t0 with
+          | TyList(t1) -> TyList(t1)
+          | _ -> raise TypeError)
       | _ -> raise TypeError)
 
   (* Verifica se a Lista e Vazia ou Nao*)
@@ -308,13 +323,13 @@ let rec eval (gamma:ambiente_valor) (e:expr) : valor = match e with
       | _ -> raise BugTypeInfer)
 
   (* Lista Vazia *)
-  | ExNil _ -> VNil
+  | ExNil _ -> (*VNil*) raise NotImplemented
 
   (* Lista com Elementos *)
   | ExList(e1, e2) -> 
-      let v1 = eval gamma e1 in
+      (*let v1 = eval gamma e1 in
       let v2 = eval gamma e2 in
-      VList(v1,v2)
+      VList(v1,v2)*) raise NotImplemented
 
   (* Primeiro Elemento de uma Lista*)
   | ExHead e0 -> (match e0 with
@@ -328,22 +343,22 @@ let rec eval (gamma:ambiente_valor) (e:expr) : valor = match e with
 
   (* Verifica se a Lista e Vazia ou Nao*)
   | ExMatchList(e0, e1, e2) ->
-      let v0 = eval gamma e0 in (match v0 with
+      (*let v0 = eval gamma e0 in (match v0 with
         | VNil -> eval gamma e1
         | VList(_,_) -> eval gamma e2
-        | _ -> raise BugTypeInfer)
+        | _ -> raise BugTypeInfer)*)raise NotImplemented
 
   (* POSSIVELMENTE ERRADO*)
-  | ExJust e0 -> VJust(eval gamma e0)
+  | ExJust e0 -> (*VJust(eval gamma e0)*)raise NotImplemented
 
   (* POSSIVELMENTE ERRADO*)
-  | ExNothing _ -> VNothing
+  | ExNothing _ ->(* VNothing*) raise NotImplemented
 
   (* POSSIVELMENTE ERRADO*)
-  | ExMatchMaybe(e1, e2, e3) -> (match e1 with
+  | ExMatchMaybe(e1, e2, e3) -> (*(match e1 with
       | ExJust e0 -> eval gamma e2
       | ExNothing _ -> eval gamma e3
-      | _ -> raise BugTypeInfer)
+      | _ -> raise BugTypeInfer)*)raise NotImplemented
 
 
 
