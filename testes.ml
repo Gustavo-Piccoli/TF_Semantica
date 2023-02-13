@@ -62,13 +62,17 @@ eval (update [] "x" (VNum(5))) (ExBinop(Multiplicacao, ExVar("x"), ExNum(4)));;
 eval [] (ExBinop(Divisao, ExNum(3), ExNum(4)));;
 eval [] (ExBinop(Divisao, ExNum(3), ExNum(0)));; (*Erro divisisão por zero *)
 eval [] (ExPar(ExTrue, ExFalse));;
-eval (update (update [] "x" (VTrue)) "y" (VFalse)) (ExPar(ExVar("x"), ExVar("y")));;
+eval (update(update [] "x" (VTrue)) "y" (VFalse)) (ExPar(ExVar("x"), ExVar("y")));;
 
 
+eval [] (ExList(ExTrue, ExNil(TyList(TyBool))));;
+eval [] (ExList(ExTrue, ExNil(TyList(TyInt))));; (* Não dá erro aqui, poiso erro ocorre no typeinfer. Mas está errado, pois o tipo da lista de nil é diferente do tipo do head *)
+eval [] (ExList(ExTrue, ExList(ExFalse, ExNil(TyList(TyBool)))));;
+eval [] (ExList(ExNum(4), ExList(ExNum(3), ExList(ExNum(5), ExNil(TyList(TyInt))))));;
 
-
-
-
+interpretador_com_ambientes [] (ExTrue);;
+interpretador_com_ambientes [] (ExList(ExTrue, ExNil(TyList(TyInt))));;
+interpretador_com_ambientes [] (ExList(ExTrue, ExNil(TyList(TyBool))));;
 
 
 
