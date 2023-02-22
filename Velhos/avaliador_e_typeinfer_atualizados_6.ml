@@ -45,7 +45,7 @@ type expr =
   | ExNothing       of tipo                          (*Expressao Nothing de tipo maybe alguma coisa*)
   | ExMatchMaybe    of expr * expr * expr            (*Retorna expressoes diferentes dependendo se a expressao de tipo maybe for just ou nothing*)
 
-(*Declaracao dos ambiente das expressoes*)
+(*Declaracao dos ambiente de tipos das expressoes*)
 type ambiente_tipo = (string * tipo) list
 
 (*Valores*)
@@ -61,7 +61,7 @@ type valor =
   | VJust              of valor                                      (* Maybe com valor *)
   | VNothing           of tipo                                       (* Maybe vazio *)
 and 
-  ambiente_valor = (string * valor) list
+  ambiente_valor = (string * valor) list (*Declaracao dos ambiente de valores das expressoes*)
 
 (*Funcao polimorfica que ajuda a varre um ambiente em busca de uma variável de tipo ou de valor*)
 let rec lookup ambiente identificador0 = match ambiente with
@@ -397,6 +397,7 @@ let rec eval (gamma:ambiente_valor) (e:expr) : valor = match e with
 
   (*Caso haja uma excecao, eh retornado um erro*)
   | _ -> raise Erro_Eval
+
 
 (**************************************************************************************************************)
 (************************************************ INTERPRETADOR ***********************************************)

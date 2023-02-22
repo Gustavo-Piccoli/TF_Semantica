@@ -61,7 +61,7 @@ type valor =
   | VJust              of valor                                      (* Maybe com valor *)
   | VNothing           of tipo                                       (* Maybe vazio *)
 and 
-  ambiente_valor = (string * valor) list
+  ambiente_valor = (string * valor) list (*Declaracao dos ambiente de valores das expressoes*)
 
 (*Funcao polimorfica que ajuda a varre um ambiente em busca de uma variável de tipo ou de valor*)
 let rec lookup ambiente identificador0 = match ambiente with
@@ -398,27 +398,10 @@ let rec eval (gamma:ambiente_valor) (e:expr) : valor = match e with
   (*Caso haja uma excecao, eh retornado um erro*)
   | _ -> raise Erro_Eval
 
+
 (**************************************************************************************************************)
 (************************************************ INTERPRETADOR ***********************************************)
 (**************************************************************************************************************)
-
-(*Funcao que transforma um valor em um tipo*)
-let rec valor_para_tipo (v: valor) : tipo = match v with
-  | VNum(n) -> TyInt
-  | VTrue -> TyBool
-  | VFalse -> TyBool
-  | VPar(v1,v2) -> TyPar(valor_para_tipo v1, valor_para_tipo v2)
-  | VNil(t) -> TyList(t)
-  | VList(v1,v2) -> (if TyList(valor_para_tipo v1) = (valor_para_tipo v2) then TyList(valor_para_tipo v1) else raise Erro_Typeinfer)
-  | VJust(v) -> TyMaybe(valor_para_tipo v)
-  | VNothing(t) -> TyMaybe(t)
-  | VClosure(x,e,gamma) -> TyFn(valor_para_tipo(eval gamma e), valor_para_tipo(eval gamma (ExVar(x)))) (*ERRADO*)
-  | VClosureRecursivo(f,x,e,gamma) -> TyFn(valor_para_tipo (eval gamma e), valor_para_tipo (eval gamma (ExVar(x)))) (*ERRADO*)
-
-(*Funcao que transforma um abiente de valores em uma ambiente de tipo*)
-let rec ambiente_valor_para_ambiente_tipo (gamma: ambiente_valor) : ambiente_tipo = match gamma with
-  | [] -> []
-  | (x,v)::t -> (x,valor_para_tipo v)::(ambiente_valor_para_ambiente_tipo t)
 
 (*Função Auxiliar que Converte Tipo para String *)
 let rec tipo_para_string (t:tipo) : string = match t with
@@ -443,18 +426,9 @@ let rec valor_para_string (v: valor) : string = match v with
     | VNothing _ -> "Nothing"
 
 (*Função Principal do Interpretador Sem Ambientes*)
-let interpretador_sem_ambientes (e:expr) : unit =
+let interpretador (e:expr) : unit =
     try 
         let t = typeinfer [] e in
         let v = eval [] e in
         print_string ((valor_para_string v) ^ " : " ^ (tipo_para_string t))
     with _ ->  print_string ("erro ")
-
-(*Função Principal do Interpretador Com Ambientes*)
-let interpretador_com_ambientes (a1:ambiente_valor) (e:expr) : unit =
-    let a2 = ambiente_valor_para_ambiente_tipo a1 in (
-    try 
-        let t = typeinfer a2 e in
-        let v = eval a1 e in
-        print_string ((valor_para_string v) ^ " : " ^ (tipo_para_string t))
-    with _ ->  print_string ("erro "))
