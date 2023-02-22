@@ -102,14 +102,14 @@ eval [] (ExList(ExTrue, ExList(ExFalse, ExNil(TyList(TyBool)))));;
 eval [] (ExList(ExNum(4), ExList(ExNum(3), ExList(ExNum(5), ExNil(TyList(TyInt))))));;
 
 (*Testes ambiente_valor_para_ambiente_tipo*)
-(update [] "x" (VNum(5)))
-ambiente_valor_para_ambiente_tipo (update [] "x" (VNum(5)))
-(update(update [] "x" (VTrue)) "y" (VFalse)) (*  [("y", VFalse); ("x", VTrue)]  *)
-ambiente_valor_para_ambiente_tipo (update(update [] "x" (VTrue)) "y" (VFalse)) (*  [("y", VFalse); ("x", VTrue)] vira  [("y", TyBool); ("x", TyBool)]*)
-(update [] "x" (VPar(VTrue, VFalse)))
-ambiente_valor_para_ambiente_tipo (update [] "x" (VPar(VTrue, VFalse)))
-ambiente_valor_para_ambiente_tipo (update [] "x" (VList(VTrue, VNil(TyList(TyBool)))))
-ambiente_valor_para_ambiente_tipo (update [] "x" (VList(VTrue, VNil(TyList(TyInt)))))
+(update [] "x" (VNum(5)));;
+ambiente_valor_para_ambiente_tipo (update [] "x" (VNum(5)));;
+(update(update [] "x" (VTrue)) "y" (VFalse));; (*  [("y", VFalse); ("x", VTrue)]  *)
+ambiente_valor_para_ambiente_tipo (update(update [] "x" (VTrue)) "y" (VFalse));; (*  [("y", VFalse); ("x", VTrue)] vira  [("y", TyBool); ("x", TyBool)]*)
+(update [] "x" (VPar(VTrue, VFalse)));;
+ambiente_valor_para_ambiente_tipo (update [] "x" (VPar(VTrue, VFalse)));;
+ambiente_valor_para_ambiente_tipo (update [] "x" (VList(VTrue, VNil(TyList(TyBool)))));;
+ambiente_valor_para_ambiente_tipo (update [] "x" (VList(VTrue, VNil(TyList(TyInt)))));;
 
 (*Testes interpretador com ambientes*)
 interpretador_com_ambientes [] (ExTrue);;
