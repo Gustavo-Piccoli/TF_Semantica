@@ -112,10 +112,68 @@ ambiente_valor_para_ambiente_tipo (update [] "x" (VList(VTrue, VNil(TyList(TyBoo
 ambiente_valor_para_ambiente_tipo (update [] "x" (VList(VTrue, VNil(TyList(TyInt)))));;
 
 (*Testes interpretador com ambientes*)
-interpretador_com_ambientes [] (ExTrue);;
-interpretador_com_ambientes [] (ExList(ExTrue, ExNil(TyList(TyInt))));;
-interpretador_com_ambientes [] (ExList(ExTrue, ExNil(TyList(TyBool))));;
-interpretador_com_ambientes [] (ExFn("x", TyInt, ExVar("x")));;
-interpretador_com_ambientes [] (ExApp(ExFn("x", TyInt, ExVar("x")), ExNum(3)));;
-interpretador_com_ambientes [] (ExLet("x", ExNum(3), ExVar("x")));; (*Erro pois falta argumentos *)
+interpretador (ExTrue);;
+interpretador (ExList(ExTrue, ExNil(TyList(TyInt))));;
+interpretador (ExList(ExTrue, ExNil(TyList(TyBool))));;
+interpretador (ExFn("x", TyInt, ExVar("x")));;
+interpretador (ExApp(ExFn("x", TyInt, ExVar("x")), ExNum(3)));;
 interpretador_com_ambientes (update [] "x" (VList(VTrue, VNil(TyList(TyInt))))) (ExVar("x"));;
+
+
+
+
+
+(*Testes aleatórios com funções*)
+typeinfer (update [] "x" TyInt) (ExBinop(Soma, ExVar("x"), ExNum(3)));
+eval (update [] "x" (VNum(2))) (ExBinop(Soma, ExVar("x"), ExNum(3)));
+
+eval (update [] "x" (VNum(5))) (ExLet("MaisUm", TyInt, ExBinop(Soma, ExVar("x"), ExNum(1)), ExVar("x"))) (*Retorna 5*)
+eval (update [] "x" (VNum(5))) (ExLet("MaisUm", TyInt, ExVar("x"), ExBinop(Soma, ExVar("x"), ExNum(1)))) (*Retorna 6*)
+
+eval [] (ExApp(ExFn("x", TyInt, ExBinop(Soma, ExVar("x"), ExNum(1))), (ExNum(5)))) (*Retorna 6*)
+
+eval [] (ExApp(ExLet("MaisUm", TyInt, ExVar("x"), ExBinop(Soma, ExVar("x"), ExNum(3))), (ExNum(2)))) (*Retorna Erro*)
+
+let gamma = [];;
+eval (update gamma "x" (VNum(5))) (ExLet("MaisUm", TyInt, ExVar("x"), ExBinop(Soma, ExVar("x"), ExNum(1))));; (*Retorna 6*)
+
+eval [] (ExFn("x", TyInt, ExBinop(Soma, ExVar("x"), ExNum(1))));;
+VClosure("x",ExBinop(Soma, ExVar("x"), ExNum(1)), []);;
+
+eval (update [] "somaum" (VClosure("x",ExBinop(Soma, ExVar("x"), ExNum(1)), []))) (ExVar("somaum"));;
+eval (update [] "somaum" (VClosure("x",ExBinop(Soma, ExVar("x"), ExNum(1)), []))) (ExApp(ExVar("somaum"),ExNum(2)));;
+
+let gamma0 = (update [] "somaum" (eval [] (ExFn("x", TyInt, ExBinop(Soma, ExVar("x"), ExNum(1))))));;
+eval gamma0 (ExApp(ExVar("somaum"),ExNum(5)));;
+
+let gamma1 = (update [] "somaum" (VClosure("x",ExBinop(Soma, ExVar("x"), ExNum(1)), [])));;
+eval gamma1 (ExApp(ExVar("somaum"),ExNum(5)));;
+
+let let1 = ExLet("somaum", TyInt, ExVar("x"), (ExBinop(Soma, ExVar("x"), ExNum(1))));;
+let gamma21 = (update [] "x" TyInt);;
+typeinfer gamma21 let1;;
+let gamma22 = (update [] "x" (VNum(10)));;
+eval gamma22 let1;;
+
+let let2 = ExLet("somaum", TyInt, (ExBinop(Soma, ExVar("x"), ExNum(1))), ExVar("somaum"));;
+let gamma23 = (update [] "x" TyInt);;
+typeinfer gamma23 let2;;
+let gamma24 = (update [] "x" (VNum(10)));;
+eval gamma24 let2;;
+
+let let3 = ExLet("somacinco", TyInt, (ExBinop(Soma, ExVar("x"), ExNum(2))), (ExBinop(Soma, ExVar("somacinco"), ExNum(3))));;
+let gamma25 = (update [] "x" TyInt);;
+typeinfer gamma25 let3;;
+let gamma26 = (update [] "x" (VNum(10)));;
+eval gamma26 let3;;
+
+let fn1 = ExFn("x", TyInt, (ExBinop(Soma, ExVar("x"), ExNum(1))));;
+let app1 = ExApp(fn1, ExNum(3));;
+eval [] app1;;
+
+(*Rec Burra*)
+let rec1 = ExLetRec("nome", (TyFn(TyInt, TyInt)), (ExFn("x", TyInt, (ExBinop(Soma, ExVar("x"), ExNum(1))))), ExNum(9));;
+(*Rec Meio Burra *)
+let rec2 = ExLetRec("nome", (TyFn(TyInt, TyInt)), (ExFn("x", TyInt, XXX)), XXX);;
+
+let if1 = ExIf((ExBinop(MaiorQue, ExVar("x"), VNum(0)), ))

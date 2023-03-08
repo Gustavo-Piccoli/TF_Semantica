@@ -144,7 +144,7 @@ let rec typeinfer (gamma: ambiente_tipo) (e:expr) : tipo  = match e with
   de tipo de e1 com um ambiente atualizado com o identificador f associado ao tipo fn(t1,t2) e com o identificador x associado ao tipo t3 da expressao fn. 
   Caso essa inferencia de e1 com esse ambiente atualizado seja igual ao tipo t2, fazemos a inferencia de tipo de e2 com o ambiente original, mas atualizado com o
   identificador f associado ao tipo fn(t1,t2)*)
-  | ExLetRec(f, TyFn(t1,t2), ExFn(x,t3,e1), e2) ->
+  | ExLetRec(f, TyFn(t1,t2), ExFn(x,t3,e1), e2) when t1 = t3 -> (*t3 deve ser igual a t1*)
       if (typeinfer (update (update gamma f (TyFn(t1,t2))) x t3) e1) = t2
       then typeinfer (update gamma f (TyFn(t1,t2))) e2
       else raise Erro_Typeinfer
@@ -297,8 +297,8 @@ let rec eval (gamma:ambiente_valor) (e:expr) : valor = match e with
   (*Funcao Anonima*) 
   (*Recebe uma expressão de funcao nao declarada (que eh composta por um identificador x, um tipo t e uma expressao e1) 
   e retorna uma closure para a funcao. Essa closure eh um valor que eh composto pelo identificador x, a expressao e1
-  e o ambiente recebid anteriormente (que nesse caso, representa o escopo onde a expressao e1 pode ser usada)*)
-  | ExFn (x,_,e1) ->  VClosure(x,e1,gamma)
+  e o ambiente recebido anteriormente (que nesse caso, representa o escopo onde a expressao e1 pode ser usada)*)
+  | ExFn (x,t,e1) ->  VClosure(x,e1,gamma)
 
   (*Aplicacao*)
   (*Recebemos uma expressao de aplicacao que possui duas expressoes internas e1 e e2. e1 tem que ter ser do tipo (fn(t1,t2)). Assim eh feita a avaliacao de e1,
@@ -313,7 +313,7 @@ let rec eval (gamma:ambiente_valor) (e:expr) : valor = match e with
   (*Funcao Declarada*)
   (*A expressao let eh composta por um identificador x, um tipo t e as expressoes e1 e e2. Eh retornada a avaliacao de e2 com o ambiente atualizado com o identificador x
   associado a valor da avaliacao de e1*)
-  | ExLet(x,_,e1,e2) -> eval (update gamma x (eval gamma e1)) e2 
+  | ExLet(x,t,e1,e2) -> eval (update gamma x (eval gamma e1)) e2 
 
   (*Funcao Declarada Recursiva*)
   (*A expressao let rec eh composta por um indentificador f, um tipo fn (que possui um tipo de entrada t1 e um tipo de saida t2),uma expressao fn 
