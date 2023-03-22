@@ -23,27 +23,27 @@ type bop =
 
 (*Gramatica de L1*)
 type expr =
-  | ExNum           of int                                  (*Numero inteiro*)
-  | ExVar           of string                               (*Variavel*)
-  | ExTrue                                                  (*Booleano true*)
-  | ExFalse                                                 (*Booleano false*)
-  | ExIf            of expr * expr * expr                   (*If then else*)
-  | ExFn            of string * tipo * expr                 (*Funcao anonima*)
-  | ExApp           of expr * expr                          (*Aplicacao*)
-  | ExLet           of string * tipo * expr * expr          (*Funcao declarada*)
-  | ExLetRec        of string * tipo * expr * expr          (*Funcao declarada recursiva*)
-  | ExBinop         of bop * expr * expr                    (*Operacao binaria*)
-  | ExPar           of expr * expr                          (*Par*)
-  | ExFst           of expr                                 (*Primeiro elemento de um par*)
-  | ExSnd           of expr                                 (*Segundo elemento de um par*)
-  | ExNil           of tipo                                 (*Lista vazia*)
-  | ExList          of expr * expr                          (*Lista nao vazia*)
-  | ExHead          of expr                                 (*Retorna o primeiro elemento de uma lista*)
-  | ExTail          of expr                                 (*Retorna uma lista sem o primeiro elemento dela*)
-  | ExMatchList     of expr * expr * string * string * expr (*Retorna expressoes diferentes dependendo se a lista for vazia ou nao*)
-  | ExJust          of expr                                 (*Expressao Just de tipo maybe alguma coisa*)
-  | ExNothing       of tipo                                 (*Expressao Nothing de tipo maybe alguma coisa*)
-  | ExMatchMaybe    of expr * expr * string * expr          (*Retorna expressoes diferentes dependendo se a expressao de tipo maybe for just ou nothing*)
+  | ExNum           of int                           (*Numero inteiro*)
+  | ExVar           of string                        (*Variavel*)
+  | ExTrue                                           (*Booleano true*)
+  | ExFalse                                          (*Booleano false*)
+  | ExIf            of expr * expr * expr            (*If then else*)
+  | ExFn            of string * tipo * expr          (*Funcao anonima*)
+  | ExApp           of expr * expr                   (*Aplicacao*)
+  | ExLet           of string * tipo * expr * expr   (*Funcao declarada*)
+  | ExLetRec        of string * tipo * expr * expr   (*Funcao declarada recursiva*)
+  | ExBinop         of bop * expr * expr             (*Operacao binaria*)
+  | ExPar           of expr * expr                   (*Par*)
+  | ExFst           of expr                          (*Primeiro elemento de um par*)
+  | ExSnd           of expr                          (*Segundo elemento de um par*)
+  | ExNil           of tipo                          (*Lista vazia*)
+  | ExList          of expr * expr                   (*Lista nao vazia*)
+  | ExHead          of expr                          (*Retorna o primeiro elemento de uma lista*)
+  | ExTail          of expr                          (*Retorna uma lista sem o primeiro elemento dela*)
+  | ExMatchList     of expr * expr * expr            (*Retorna expressoes diferentes dependendo se a lista for vazia ou nao*)
+  | ExJust          of expr                          (*Expressao Just de tipo maybe alguma coisa*)
+  | ExNothing       of tipo                          (*Expressao Nothing de tipo maybe alguma coisa*)
+  | ExMatchMaybe    of expr * expr * expr            (*Retorna expressoes diferentes dependendo se a expressao de tipo maybe for just ou nothing*)
 
 (*Declaracao dos ambiente das expressoes*)
 type ambiente_tipo = (string * tipo) list
@@ -175,12 +175,11 @@ let rec typeinfer (gamma: ambiente_tipo) (e:expr) : tipo  = match e with
       | _ -> raise (Erro_Typeinfer "Em ExTail(e0) a expressao e0 nao eh do tipo lista"))
 
   (*Match List*)
-  | ExMatchList(e1, e2, x, xs, e3) ->
-      let t1 = typeinfer gamma e1 in (match t1 with
-        | TyList(t4) -> 
-            let t2 = typeinfer gamma e2 in
-            let t3 = typeinfer (update (update gamma x t4) xs (TyList(t4))) e3 in (
-                if t2 = t3 then t2 else raise (Erro_Typeinfer "Em ExMatchList(e1,e2,e3) as expressoes e2 e e3 nao tem o mesmo tipo"))
+  | ExMatchList(e1,e2,e3) ->
+      let t1 = typeinfer gamma e1 in
+      let t2 = typeinfer gamma e2 in
+      let t3 = typeinfer gamma e3 in (match t1 with
+        | TyList(t4) -> if t2 = t3 then t2 else raise (Erro_Typeinfer "Em ExMatchList(e1,e2,e3) as expressoes e2 e e3 nao tem o mesmo tipo")
         | _ -> raise (Erro_Typeinfer "Em ExMatchList(e1,e2,e3) a expressao e1 nao eh do tipo lista"))
 
   (*Just*)
@@ -190,13 +189,12 @@ let rec typeinfer (gamma: ambiente_tipo) (e:expr) : tipo  = match e with
   | ExNothing(t) -> TyMaybe(t)
 
   (*Match Maybe*)
-  | ExMatchMaybe(e1,e2,x,e3) ->
-      let t1 = typeinfer gamma e1 in (match t1 with
-        | TyMaybe(t4) -> 
-            let t2 = typeinfer gamma e2 in
-            let t3 = typeinfer (update gamma x t4) e3 in (
-                if t2 = t3 then t2 else (raise (Erro_Typeinfer "Em ExMatchMaybe(e1,e2,x,e3) as expressoes e2 e e3 nao tem o mesmo tipo")))
-        | _ -> raise (Erro_Typeinfer "Em ExMatchMaybe(e1,e2,x,e3) a expressao e1 nao eh do tipo maybe"))
+  | ExMatchMaybe(e1,e2,e3) ->
+      let t1 = typeinfer gamma e1 in
+      let t2 = typeinfer gamma e2 in
+      let t3 = typeinfer gamma e3 in (match t1 with
+        | TyMaybe(t4) -> if t2 = t3 then t2 else (raise (Erro_Typeinfer "Em ExMatchMaybe(e1,e2,e3) as expressoes e2 e e3 nao tem o mesmo tipo"))
+        | _ -> raise (Erro_Typeinfer "Em ExMatchMaybe(e1,e2,e3) a expressao e1 nao eh do tipo maybe"))
 
   (*Excecoes retornam erros*)
   | _ -> raise (Erro_Typeinfer "Expressao nao eh do tipo esperado")
@@ -308,23 +306,22 @@ let rec eval (gamma:ambiente_valor) (e:expr) : valor = match e with
       | _ -> raise (Erro_Eval "Em ExTail(e0) a expressao e0 nao avalia para um valor lista"))
 
   (*Verifica se a Lista e Vazia ou Nao*)
-  | ExMatchList(e1,e2, x, xs, e3) ->
-      let v1 = eval gamma e1 in (match v1 with
-          | VNil(_) -> eval gamma e2
-          | VList(head, tail) -> eval (update (update gamma x head) xs tail) e3
-          | _ -> raise (Erro_Eval "Em ExMatchList(e1,e2, x, xs, e3) a expressao e1 nao avalia para um valor lista ou nil"))
+  | ExMatchList(e0, e1, e2) -> (match eval gamma e0 with
+      | VNil(_) -> eval gamma e1
+      | VList(_,_) -> eval gamma e2
+      | _ -> raise (Erro_Eval "Em ExMatchList(e0, e1, e2) a expressao e0 nao avalia para um valor lista"))
 
   (*Just*)
   | ExJust(e0) -> VJust(eval gamma e0)
 
   (*Nothing*)
-  | ExNothing(t0) -> VNothing(t0)
+  | ExNothing (t0) -> VNothing(t0)
 
   (*Match Maybe*)
-  | ExMatchMaybe(e0, e1, x, e2) -> (match eval gamma e0 with
-      | VNothing(_) -> eval gamma e1
-      | VJust(v) -> eval (update gamma x v) e2
-      | _ -> raise (Erro_Eval "Em ExMatchMaybe(e0, e1, x, e2) a expressao e0 nao avalia para um valor de tipo maybe"))
+  | ExMatchMaybe(e0, e1, e2) -> (match eval gamma e0 with
+      | VJust(_) -> eval gamma e1
+      | VNothing(_) -> eval gamma e2
+      | _ -> raise (Erro_Eval "Em ExMatchMaybe(e0, e1, e2) a expressao e0 nao avalia para um valor maybe"))
 
   (*Caso haja uma excecao, eh retornado um erro*)
   | _ -> raise (Erro_Eval "Expressao nao implementada")
@@ -358,7 +355,8 @@ let rec valor_para_string (v: valor) : string = match v with
 
 (*Função Principal do Interpretador Sem Ambientes*)
 let interpretador (e:expr) : unit =
-    try let t = typeinfer [] e in
-        try let v = eval [] e in print_string ((valor_para_string v) ^ " : " ^ (tipo_para_string t))
-            with Erro_Eval s -> print_string ("Erro de avaliacao: " ^ s)
-    with Erro_Typeinfer s -> print_string ("Erro de tipo: " ^ s) 
+    try 
+        let t = typeinfer [] e in
+        let v = eval [] e in
+        print_string ((valor_para_string v) ^ " : " ^ (tipo_para_string t))
+    with _ ->  print_string ("erro ")

@@ -177,3 +177,69 @@ let rec1 = ExLetRec("nome", (TyFn(TyInt, TyInt)), (ExFn("x", TyInt, (ExBinop(Som
 let rec2 = ExLetRec("nome", (TyFn(TyInt, TyInt)), (ExFn("x", TyInt, XXX)), XXX);;
 
 let if1 = ExIf((ExBinop(MaiorQue, ExVar("x"), VNum(0)), ))
+
+
+
+(* Escrever função recursiva de fatorial*)
+let rec fatorial n = if n = 0 then 1 else n * fatorial (n-1);;
+
+eval (update [] "x" ExNum(3)) ExIf(ExBinop(MaiorQue, ExVar("x"), ExNum(0)), ExBinop(Soma, ExVar("x"), ExNum(1)), ExNum(0));;
+
+
+
+
+
+
+(*LISTAS*)
+(*Definição Nova*)
+ExMatchList(e0, e1, x, xs, e2)
+(*Implementação Nova*)
+if e0 = [] then e1
+else if (e0 eh uma lista nao vazia) then (eval [update ambiente x::xs] e2)
+(*Exemplo Novo*)
+interpretador (ExMatchList (ExList(ExNum(1), ExNil(TyList(TyInt))), ExNum(3), "x", "xs", ExNum(4)));;
+
+
+
+(*MAYBE*)
+(*Definição Nova*)
+ExMatchMaybe(e0, e1, x, e2)
+(*Implementação Nova*)
+if e0 = nothing then e1
+else if (e0 = just _)  then (eval [update gamma x] e2)
+(*Exemplo Novo*)
+
+
+interpretador (ExMatchMaybe (ExJust(ExNum(1)), ExNum(3), "x", ExNum(4)));;
+
+
+typeinfer [] (ExMatchList (ExNil(TyList(TyInt)), ExNum(3), "x", "xs", ExNum(4)));;
+typeinfer [] (ExMatchList (ExList(ExNum(1), ExNil(TyList(TyInt))), ExNum(3), "x", "xs", ExNum(4)));;
+typeinfer [] (ExMatchList (ExNil(TyList(TyInt)), ExTrue, "x", "xs", ExNum(4)));; (*ERRO*)
+typeinfer [] (ExMatchList (ExList(ExNum(1), ExNil(TyList(TyInt))), ExFalse, "x", "xs", ExNum(4)));; (*ERRO*)
+
+eval [] (ExMatchList (ExNil(TyList(TyInt)), ExNum(3), "x", "xs", ExNum(4)));;
+eval [] (ExMatchList (ExList(ExNum(1), ExNil(TyList(TyInt))), ExNum(3), "x", "xs", ExNum(4)));;
+
+interpretador (ExMatchList (ExNil(TyList(TyInt)), ExNum(3), "x", "xs", ExNum(4)));;
+interpretador (ExMatchList (ExList(ExNum(1), ExNil(TyList(TyInt))), ExNum(3), "x", "xs", ExNum(4)));;
+interpretador (ExMatchList (ExNil(TyList(TyInt)), ExTrue, "x", "xs", ExNum(4)));; (*ERRO*)
+interpretador (ExMatchList (ExList(ExNum(1), ExNil(TyList(TyInt))), ExFalse, "x", "xs", ExNum(4)));; (*ERRO*)
+
+
+
+
+typeinfer [] (ExMatchMaybe (ExNothing(TyBool), ExNum(3), "x", ExNum(4)));;
+typeinfer [] (ExMatchMaybe (ExJust(ExNum(1)), ExNum(3), "x", ExNum(4)));;
+typeinfer [] (ExMatchMaybe (ExNothing(TyBool), ExTrue, "x", ExNum(4)));; (*ERRO*)
+typeinfer [] (ExMatchMaybe (ExJust(ExNum(1)), ExFalse, "x", ExNum(4)));; (*ERRO*)
+
+eval [] (ExMatchMaybe (ExNothing(TyBool), ExNum(3), "x", ExNum(4)));;
+eval [] (ExMatchMaybe (ExJust(ExNum(1)), ExNum(3), "x", ExNum(4)));;
+
+interpretador (ExMatchMaybe (ExNothing(TyBool), ExNum(3), "x", ExNum(4)));;
+interpretador (ExMatchMaybe (ExJust(ExNum(1)), ExNum(3), "x", ExNum(4)));;
+interpretador (ExMatchMaybe (ExNothing(TyBool), ExTrue, "x", ExNum(4)));; (*ERRO*)
+interpretador (ExMatchMaybe (ExJust(ExNum(1)), ExFalse, "x", ExNum(4)));; (*ERRO*)
+
+
