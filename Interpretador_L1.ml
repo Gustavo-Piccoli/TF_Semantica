@@ -180,8 +180,8 @@ let rec typeinfer (gamma: ambiente_tipo) (e:expr) : tipo  = match e with
         | TyList(t4) -> 
             let t2 = typeinfer gamma e2 in
             let t3 = typeinfer (update (update gamma x t4) xs (TyList(t4))) e3 in (
-                if t2 = t3 then t2 else raise (Erro_Typeinfer "Em ExMatchList(e1,e2,e3) as expressoes e2 e e3 nao tem o mesmo tipo"))
-        | _ -> raise (Erro_Typeinfer "Em ExMatchList(e1,e2,e3) a expressao e1 nao eh do tipo lista"))
+                if t2 = t3 then t2 else raise (Erro_Typeinfer "Em ExMatchList(e1,e2,x,xs,e3) as expressoes e2 e e3 nao tem o mesmo tipo"))
+        | _ -> raise (Erro_Typeinfer "Em ExMatchList(e1,e2,x,xs,e3) a expressao e1 nao eh do tipo lista"))
 
   (*Just*)
   | ExJust(e0) -> TyMaybe(typeinfer gamma e0)
@@ -279,13 +279,13 @@ let rec eval (gamma:ambiente_valor) (e:expr) : valor = match e with
       VPar(v1,v2)
 
   (*Primeiro Elemento de um Par*)
-  | ExFst(e0) -> (match e0 with
-      | ExPar(e1,_) -> eval gamma e1
+  | ExFst(e0) -> (match eval gamma e0 with
+      | VPar(v1,_) -> v1
       | _ -> raise (Erro_Eval "Em ExFst(e0) a expressao e0 nao avalia para um valor par ordenado"))
 
   (*Segundo Elemento de um Par*)
-  | ExSnd(e0) -> (match e0 with
-      | ExPar(_,e2) -> eval gamma e2
+  | ExSnd(e0) -> (match eval gamma e0 with
+      | VPar(_,v2) -> v2
       | _ -> raise (Erro_Eval "Em ExSnd(e0) a expressao e0 nao avalia para um valor par ordenado"))
 
   (*Lista Vazia*)
@@ -298,20 +298,20 @@ let rec eval (gamma:ambiente_valor) (e:expr) : valor = match e with
       VList(v1,v2)
 
   (*Primeiro Elemento de uma Lista*)
-  | ExHead(e0) -> (match e0 with
-      | ExList(e1,_) -> eval gamma e1
+  | ExHead(e0) -> (match eval gamma e0 with
+      | VList(v1,_) -> v1
       | _ -> raise (Erro_Eval "Em ExHead(e0) a expressao e0 nao avalia para um valor lista"))
 
   (*Segundo Elemento de uma Lista*)
-  | ExTail(e0) -> (match e0 with
-      | ExList(_,e2) -> eval gamma e2
+  | ExTail(e0) -> (match eval gamma e0 with
+      | VList(_,v2) -> v2
       | _ -> raise (Erro_Eval "Em ExTail(e0) a expressao e0 nao avalia para um valor lista"))
 
   (*Verifica se a Lista e Vazia ou Nao*)
   | ExMatchList(e1,e2, x, xs, e3) ->
       let v1 = eval gamma e1 in (match v1 with
           | VNil(_) -> eval gamma e2
-          | VList(head, tail) -> eval (update (update gamma x head) xs tail) e3
+          | VList(head, tail) -> eval (update (update gamma x  head) xs tail) e3
           | _ -> raise (Erro_Eval "Em ExMatchList(e1,e2, x, xs, e3) a expressao e1 nao avalia para um valor lista ou nil"))
 
   (*Just*)
@@ -349,16 +349,54 @@ let rec valor_para_string (v: valor) : string = match v with
     | VTrue -> "true"
     | VFalse -> "false"
     | VPar(v1, v2) -> "(" ^ valor_para_string v1 ^ "," ^ valor_para_string v1 ^ ")"
-    | VClosure _ ->  "fn"
-    | VClosureRecursivo _ -> "fn"
+    | VClosure _ ->  "Função (Execute 'eval [] expressao' para ver o valor do closure não recursiva)"
+    | VClosureRecursivo _ -> "Função (Executar 'eval [] expressao' para ver o valor do closure recursiva)"
     | VNil _ -> "[]"
     | VList(v1, v2) -> "[" ^ valor_para_string v1 ^ "," ^ valor_para_string v2 ^ "]"
     | VJust(v0) -> "Just " ^ valor_para_string v0
     | VNothing _ -> "Nothing"
 
-(*Função Principal do Interpretador Sem Ambientes*)
+(*Função Principal do Interpretador*)
 let interpretador (e:expr) : unit =
-    try let t = typeinfer [] e in
-        try let v = eval [] e in print_string ((valor_para_string v) ^ " : " ^ (tipo_para_string t))
-            with Erro_Eval s -> print_string ("Erro de avaliacao: " ^ s)
-    with Erro_Typeinfer s -> print_string ("Erro de tipo: " ^ s) 
+  try let t = typeinfer [] e in
+    try let v = eval [] e in print_string ("Valor: " ^ (valor_para_string v) ^ "\nTipo: " ^ (tipo_para_string t))
+    with Erro_Eval s -> print_string ("Erro de avaliacao: " ^ s)
+  with Erro_Typeinfer s -> print_string ("Erro de tipo: " ^ s)
+
+
+
+(*TESTES*)
+let t1 = (ExLet("x", TyInt, ExNum(2), ExLet("foo", TyFn(TyInt, TyInt), ExFn("y", TyInt, ExBinop(Soma, ExVar("x"), ExVar("y"))), ExLet("x", TyInt, ExNum(5), ExApp(ExVar("foo"), ExNum(10))))))
+
+let t2 = (ExLet("x", TyInt, ExNum(2), ExLet("foo", TyFn(TyInt, TyInt), ExFn("y", TyInt, ExBinop(Soma, ExVar("x"), ExVar("y"))), ExLet("x", TyInt, ExNum(5), ExVar("foo")))))
+
+let t3 = (ExLetRec("lookup", 
+                   TyFn(TyList(TyPar(TyInt, TyInt)), TyFn(TyInt, TyMaybe(TyInt))), 
+                   ExFn("l", 
+                        TyList(TyPar(TyInt, TyInt)), 
+                        ExFn("key", 
+                             TyInt, 
+                             ExMatchList(ExVar("l"),
+                                         ExNothing(TyInt),
+                                         "x",
+                                         "xs",
+                                         ExIf(ExBinop(Igual, ExFst(ExVar("x")), ExVar("key")), 
+                                              ExJust(ExSnd(ExVar("x"))), 
+                                              ExApp(ExApp(ExVar("lookup"), ExVar("xs")), ExVar("key")))))),
+                   ExApp(ExApp(ExVar("lookup"), 
+                               ExList(ExPar(ExNum(1), ExNum(10)), ExList(ExPar(ExNum(2), ExNum(20)), ExList(ExPar(ExNum(3), ExNum(30)),ExNil(TyList(TyPar(TyInt,TyInt))))))), 
+                         ExNum(2))))
+
+let t4 =(ExLetRec("map", 
+                  TyFn(TyFn(TyInt, TyInt), TyFn(TyList(TyInt), TyList(TyInt))), 
+                  ExFn("f", 
+                       TyFn(TyInt, TyInt), 
+                       ExFn("l", 
+                            TyList(TyInt), 
+                            ExMatchList(ExVar("l"), 
+                                        ExNil(TyList(TyInt)), 
+                                        "x", 
+                                        "xs", 
+                                        ExList(ExApp(ExVar("f"), ExVar("x")), 
+                                               ExApp(ExApp(ExVar("map"), ExVar("f")), ExVar("xs")))))),
+                  ExApp(ExApp(ExVar("map"), ExFn("x", TyInt, ExBinop(Soma, ExVar("x"), ExVar("x")))), ExList(ExNum(10), ExList(ExNum(20), ExList(ExNum(30), ExNil(TyList(TyInt))))))))
